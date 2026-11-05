@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>X-O-X Oyunu</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      transition: background-color 0.4s ease;
+    }
+    .bg-red { background-color: #ff4d4d; }
+    .bg-blue { background-color: #4d94ff; }
+    
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      text-align: center;
+      max-width: 360px;
+      width: 90%;
+    }
+    h1 { font-size: 24px; margin-bottom: 15px; color: #333; }
+    .status {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: #f0f0f0;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .cell {
+      width: 80px;
+      height: 80px;
+      background: #f9f9f9;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      font-size: 36px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .cell:hover { background: #eee; }
+    .cell.X { color: #d9534f; }
+    .cell.O { color: #0275d8; }
+    
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      background: #333;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover { background: #555; }
+    
+    /* Pop-up Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      text-align: center;
+    }
+    .modal-content h2 { font-size: 28px; margin-bottom: 15px; }
+  </style>
+</head>
+<body id="body" class="bg-red">
+
+  <div class="card">
+    <h1>X - O - X</h1>
+    <div id="status" class="status">Oyuncu Hazırlanıyor...</div>
+    <div class="board" id="board">
+      <div class="cell" onclick="makeMove(0)"></div>
+      <div class="cell" onclick="makeMove(1)"></div>
+      <div class="cell" onclick="makeMove(2)"></div>
+      <div class="cell" onclick="makeMove(3)"></div>
+      <div class="cell" onclick="makeMove(4)"></div>
+      <div class="cell" onclick="makeMove(5)"></div>
+      <div class="cell" onclick="makeMove(6)"></div>
+      <div class="cell" onclick="makeMove(7)"></div>
+      <div class="cell" onclick="makeMove(8)"></div>
+    </div>
+    <button onclick="resetGame()">Yeniden Başlat</button>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <h2 id="winnerText"></h2>
+      <button onclick="resetGame()">Tekrar Oyna</button>
+    </div>
+  </div>
+
+  <script>
+    let gameState = ["", "", "", "", "", "", "", "", ""];
+    let activePlayer = 1;
+    let gameActive = true;
+    let p1 = {}, p2 = {};
+
+    const winningConditions = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+
+    function initGame() {
+      gameState = ["", "", "", "", "", "", "", "", ""];
+      gameActive = true;
+      document.querySelectorAll('.cell').forEach(cell => cell.innerText = "");
+      document.getElementById('modal').style.display = 'none';
+
+      const p1IsRed = Math.random() < 0.5;
+      const p1IsX = Math.random() < 0.5;
+
+      p1 = {
+        name: "1. Oyuncu",
+        color: p1IsRed ? "Kırmızı" : "Mavi",
+        class: p1IsRed ? "bg-red" : "bg-blue",
+        hex: p1IsRed ? "#ff4d4d" : "#4d94ff",
+        symbol: p1IsX ? "X" : "O"
+      };
+
+      p2 = {
+        name: "2. Oyuncu",
+        color: p1IsRed ? "Mavi" : "Kırmızı",
+        class: p1IsRed ? "bg-blue" : "bg-red",
+        hex: p1IsRed ? "#4d94ff" : "#ff4d4d",
+        symbol: p1IsX ? "O" : "X"
+      };
+
+      activePlayer = Math.random() < 0.5 ? 1 : 2;
+      updateTurnUI();
+    }
+
+    function updateTurnUI() {
+      const currentPlayer = activePlayer === 1 ? p1 : p2;
+      document.getElementById('body').className = currentPlayer.class;
+      document.getElementById('status').innerText = `${currentPlayer.name} Sırası (${currentPlayer.symbol})`;
+    }
+
+    function makeMove(index) {
+      if (gameState[index] !== "" || !gameActive) return;
+
+      const currentPlayer = activePlayer === 1 ? p1 : p2;
+      gameState[index] = currentPlayer.symbol;
+      
+      const cells = document.querySelectorAll('.cell');
+      cells[index].innerText = currentPlayer.symbol;
+      cells[index].classList.add(currentPlayer.symbol);
+
+      checkResult();
+    }
+
+    function checkResult() {
+      let roundWon = false;
+      const currentPlayer = activePlayer === 1 ? p1 : p2;
+
+      for (let i = 0; i < winningConditions.length; i++) {
+        const [a, b, c] = winningConditions[i];
+        if (gameState[a] && gameState[a] === gameState[b] && gameState[a] === gameState[c]) {
+          roundWon = true;
+          break;
+        }
+      }
+
+      if (roundWon) {
+        showWinner(`${currentPlayer.name} Kazandı!`, currentPlayer.hex);
+        gameActive = false;
+        return;
+      }
+
+      if (!gameState.includes("")) {
+        showWinner("Berabere!", "#333");
+        gameActive = false;
+        return;
+      }
+
+      activePlayer = activePlayer === 1 ? 2 : 1;
+      updateTurnUI();
+    }
+
+    function showWinner(text, color) {
+      const modal = document.getElementById('modal');
+      const winnerText = document.getElementById('winnerText');
+      winnerText.innerText = text;
+      winnerText.style.color = color;
+      modal.style.display = 'flex';
+    }
+
+    function resetGame() {
+      initGame();
+    }
+
+    window.onload = initGame;
+  </script>
+</body>
+</html>
